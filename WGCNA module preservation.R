@@ -1,121 +1,130 @@
-#install.packages('foreach')
-#install.packages('doParallel')
-#install.packages('flashClust')
-#install.packages('dplyr')
-#install.packages('ff')
-#install.packages('WGCNA')
-#install.packages('stringr')
-#install.packages('reshape2')
-#install.packages('caret')
-#install.packages('blob')
-
-library(WGCNA)
-library(stringr)
-library(reshape2)
-library(caret)
-#library(dismay)
-library(foreach)
-library(doParallel)
-library(flashClust)
-library(dplyr)
-library(ff)
-bigcor <- function(
-  x, 
-  y = NULL,
-  fun = c("cor", "cov"), 
-  size = 2000, 
-  verbose = TRUE, 
-  ...)
-{
-  fun <- match.arg(fun)
-  if (fun == "cor") FUN <- cor else FUN <- cov
-  if (fun == "cor") STR <- "Correlation" else STR <- "Covariance" 
-  if (!is.null(y) & NROW(x) != NROW(y)) stop("'x' and 'y' must have compatible dimensions!")
-  
-  NCOL <- ncol(x)
-  if (!is.null(y)) YCOL <- NCOL(y)
-  
-  ## calculate remainder, largest 'size'-divisible integer and block size
-  REST <- NCOL %% size
-  LARGE <- NCOL - REST  
-  NBLOCKS <- NCOL %/% size
-  
-  ## preallocate square matrix of dimension
-  ## ncol(x) in 'ff' single format
-  if (is.null(y)) resMAT <- ff(vmode = "double", dim = c(NCOL, NCOL))  
-  else resMAT <- ff(vmode = "double", dim = c(NCOL, YCOL))
-  
-  ## split column numbers into 'nblocks' groups + remaining block
-  GROUP <- rep(1:NBLOCKS, each = size)
-  if (REST > 0) GROUP <- c(GROUP, rep(NBLOCKS + 1, REST))
-  SPLIT <- split(1:NCOL, GROUP)
-  
-  ## create all unique combinations of blocks
-  COMBS <- expand.grid(1:length(SPLIT), 1:length(SPLIT))
-  COMBS <- t(apply(COMBS, 1, sort))
-  COMBS <- unique(COMBS)  
-  if (!is.null(y)) COMBS <- cbind(1:length(SPLIT), rep(1, length(SPLIT)))
-  
-  ## initiate time counter
-  timeINIT <- proc.time() 
-  
-  ## iterate through each block combination, calculate correlation matrix
-  ## between blocks and store them in the preallocated matrix on both
-  ## symmetric sides of the diagonal
-  for (i in 1:nrow(COMBS)) {
-    COMB <- COMBS[i, ]    
-    G1 <- SPLIT[[COMB[1]]]
-    G2 <- SPLIT[[COMB[2]]]    
-    
-    ## if y = NULL
-    if (is.null(y)) {
-      if (verbose) cat(sprintf("#%d: %s of Block %s and Block %s (%s x %s) ... ", i, STR,  COMB[1],
-                               COMB[2], length(G1),  length(G2)))      
-      RES <- FUN(x[, G1], x[, G2], ...)
-      resMAT[G1, G2] <- RES
-      resMAT[G2, G1] <- t(RES) 
-    } else ## if y = smaller matrix or vector  
-    {
-      if (verbose) cat(sprintf("#%d: %s of Block %s and 'y' (%s x %s) ... ", i, STR,  COMB[1],
-                               length(G1),  YCOL))    
-      RES <- FUN(x[, G1], y, ...)
-      resMAT[G1, ] <- RES             
-    }
-    
-    if (verbose) {
-      timeNOW <- proc.time() - timeINIT
-      cat(timeNOW[3], "s\n")
-    }
-    
-    gc()
-  } 
-  
-  return(resMAT)
+if (1<0){
+  install.packages('foreach')
+  install.packages('doParallel')
+  install.packages('flashClust')
+  install.packages('dplyr')
+  install.packages('ff')
+  install.packages('WGCNA')
+  install.packages('stringr')
+  install.packages('reshape2')
+  install.packages('caret')
+  install.packages('blob') 
 }
+if(1>0){
+  library(WGCNA)
+  library(stringr)
+  library(reshape2)
+  library(caret)
+  #library(dismay)
+  library(foreach)
+  library(doParallel)
+  library(flashClust)
+  library(dplyr)
+  library(ff)
+  bigcor <- function(
+    x, 
+    y = NULL,
+    fun = c("cor", "cov"), 
+    size = 2000, 
+    verbose = TRUE, 
+    ...)
+  {
+    fun <- match.arg(fun)
+    if (fun == "cor") FUN <- cor else FUN <- cov
+    if (fun == "cor") STR <- "Correlation" else STR <- "Covariance" 
+    if (!is.null(y) & NROW(x) != NROW(y)) stop("'x' and 'y' must have compatible dimensions!")
+    
+    NCOL <- ncol(x)
+    if (!is.null(y)) YCOL <- NCOL(y)
+    
+    ## calculate remainder, largest 'size'-divisible integer and block size
+    REST <- NCOL %% size
+    LARGE <- NCOL - REST  
+    NBLOCKS <- NCOL %/% size
+    
+    ## preallocate square matrix of dimension
+    ## ncol(x) in 'ff' single format
+    if (is.null(y)) resMAT <- ff(vmode = "double", dim = c(NCOL, NCOL))  
+    else resMAT <- ff(vmode = "double", dim = c(NCOL, YCOL))
+    
+    ## split column numbers into 'nblocks' groups + remaining block
+    GROUP <- rep(1:NBLOCKS, each = size)
+    if (REST > 0) GROUP <- c(GROUP, rep(NBLOCKS + 1, REST))
+    SPLIT <- split(1:NCOL, GROUP)
+    
+    ## create all unique combinations of blocks
+    COMBS <- expand.grid(1:length(SPLIT), 1:length(SPLIT))
+    COMBS <- t(apply(COMBS, 1, sort))
+    COMBS <- unique(COMBS)  
+    if (!is.null(y)) COMBS <- cbind(1:length(SPLIT), rep(1, length(SPLIT)))
+    
+    ## initiate time counter
+    timeINIT <- proc.time() 
+    
+    ## iterate through each block combination, calculate correlation matrix
+    ## between blocks and store them in the preallocated matrix on both
+    ## symmetric sides of the diagonal
+    for (i in 1:nrow(COMBS)) {
+      COMB <- COMBS[i, ]    
+      G1 <- SPLIT[[COMB[1]]]
+      G2 <- SPLIT[[COMB[2]]]    
+      
+      ## if y = NULL
+      if (is.null(y)) {
+        if (verbose) cat(sprintf("#%d: %s of Block %s and Block %s (%s x %s) ... ", i, STR,  COMB[1],
+                                 COMB[2], length(G1),  length(G2)))      
+        RES <- FUN(x[, G1], x[, G2], ...)
+        resMAT[G1, G2] <- RES
+        resMAT[G2, G1] <- t(RES) 
+      } else ## if y = smaller matrix or vector  
+      {
+        if (verbose) cat(sprintf("#%d: %s of Block %s and 'y' (%s x %s) ... ", i, STR,  COMB[1],
+                                 length(G1),  YCOL))    
+        RES <- FUN(x[, G1], y, ...)
+        resMAT[G1, ] <- RES             
+      }
+      
+      if (verbose) {
+        timeNOW <- proc.time() - timeINIT
+        cat(timeNOW[3], "s\n")
+      }
+      
+      gc()
+    } 
+    
+    return(resMAT)
+  }
+}
+
+
+setwd('C:/Users/user/Desktop/test/scanpy')
 foldername='pbmc3k'
-Leiden_clustering_size=read.csv('./',foldername,'/Leiden_clustering_size.csv', check.names=FALSE)
-for(i in 1:nrow(Leiden_clustering_size))
+Clusteringmethod='Leiden'
+clustering_size=read.csv('/',foldername,'/',Clusteringmethod,'_clustering_size.csv', check.names=FALSE)
+
+
+for(i in 1:nrow(clustering_size))
 {
   cat("round ",i,"\n")
-  clusterName <- Leiden_clustering_size[i,1]# = ²Äi­ÓclusterªºÀÉ®×¦WºÙ
-  clusterCellNumber <- Leiden_clustering_size[i,2]# = ²Äi­Óclusterªºcell¼Æ¶q
-  dir.create(paste("./",foldername,"/",clusterName,sep=""))#«Ø¥ß¸Óclusterªº¸ê®Æ§¨
-  dir.create(paste("./",foldername,"/",clusterName,"/modules",sep=""))#«Ø¥ßÀx¦s¸Ócluster module geneªº¸ê®Æ§¨
+  clusterName <- clustering_size[i,1]# = ç¬¬iå€‹clusterçš„æª”æ¡ˆåç¨±
+  clusterCellNumber <- clustering_size[i,2]# = ç¬¬iå€‹clusterçš„cellæ•¸é‡
+  dir.create(paste("./",foldername,"/",clusterName,sep=""))#å»ºç«‹è©²clusterçš„è³‡æ–™å¤¾
+  dir.create(paste("./",foldername,"/",clusterName,"/modules",sep=""))#å»ºç«‹å„²å­˜è©²cluster module geneçš„è³‡æ–™å¤¾
   ## SAVE!
   cat(as.character(clusterName),'\t',clusterCellNumber,'\n',sep=" ",file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T)
   
-  #input RNAseqªºÀÉ®×¡A¤@­Ócolumn¬O¤@­Ó°ò¦]¡A¤@­Órow¬O¤@­Ócell
+  #input RNAseqçš„æª”æ¡ˆï¼Œä¸€å€‹columnæ˜¯ä¸€å€‹åŸºå› ï¼Œä¸€å€‹rowæ˜¯ä¸€å€‹cell
   options(stringsAsFactors = FALSE)
   Data = read.csv(paste("./",foldername,"/",clusterName,".csv",sep=""), check.names=FALSE)
   rownames(Data) <- c(Data[,1])
-  Data <- Data[,-1]#±Nbarcode²¾Âà¨ìrownames
-  #¬d¬İ¸ê®Æ
+  Data <- Data[,-1]#å°‡barcodeç§»è½‰åˆ°rownames
+  #æŸ¥çœ‹è³‡æ–™
   Data[1:10,1:10]
   ## SAVE!
   #cat('Before MAD, data dimension:',dim(Data),'\n',sep=" ",file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T)
   
   
-  ##³oÃä°µ¤@¦¸PCC
+  ##é€™é‚Šåšä¸€æ¬¡PCC
   
   #Pcc = bigcor(as.matrix(Data))
   #dim(Pcc)
@@ -127,15 +136,15 @@ for(i in 1:nrow(Leiden_clustering_size))
   #dim(Pcc_pvalue)
   #Pcc_pvalue[1:4,1:4]
   
-  #¨úµ´¹ï¤¤¦ì¼Æ°¾®t(MAD)«e75%ªº°ò¦]¡A¨Ã¥BMAD¦Ü¤Ö­n¤j©ó0.01
+  #å–çµ•å°ä¸­ä½æ•¸åå·®(MAD)å‰75%çš„åŸºå› ï¼Œä¸¦ä¸”MADè‡³å°‘è¦å¤§æ–¼0.01
   dataExpr <- as.data.frame(t(Data))
   m.mad <- apply(dataExpr,1,mad)
   dataExprVar <- dataExpr[which(m.mad > 
                                   max(quantile(m.mad, probs=seq(0, 1, 0.25))[2],0.01)),]
-  #¦]¬°MAD¨º¨BÂà¤F¤@¦¸¯x°}¡A©Ò¥H¦AÂà¤@¦¸
+  #å› ç‚ºMADé‚£æ­¥è½‰äº†ä¸€æ¬¡çŸ©é™£ï¼Œæ‰€ä»¥å†è½‰ä¸€æ¬¡
   dataExpr <- as.data.frame(t(dataExprVar))
   ###ataExpr <- as.data.frame(t(Data))
-  ##¦A°µ¤@¦¸PCC
+  ##å†åšä¸€æ¬¡PCC
   
   #Pcc = bigcor(as.matrix(dataExpr))
   #dim(Pcc)
@@ -147,9 +156,9 @@ for(i in 1:nrow(Leiden_clustering_size))
   #dim(Pcc_pvalue)
   #Pcc_pvalue[1:4,1:4]
   
-  #¿z¿ï±¼ÅÜ²§¼Æ¬°0©Î¤Ó¦h0ªº°ò¦]
+  #ç¯©é¸æ‰è®Šç•°æ•¸ç‚º0æˆ–å¤ªå¤š0çš„åŸºå› 
   gsg = goodSamplesGenes(dataExpr, verbose = 3)
-  #¦L¥X³Q¿z¿ï±¼ªº°ò¦]
+  #å°å‡ºè¢«ç¯©é¸æ‰çš„åŸºå› 
   if (!gsg$allOK){
     # Optionally, print the gene and sample names that were removed:
     if (sum(!gsg$goodGenes)>0)
@@ -169,10 +178,10 @@ for(i in 1:nrow(Leiden_clustering_size))
   ## SAVE!
   cat('After MAD, data dimension:',dim(dataExpr),'\n',sep=" ",file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T)
   
-  #­pºâ³n»Ö­È(­nÅı¼Æ­È´X¦¸¤è)
+  #è¨ˆç®—è»Ÿé–¥å€¼(è¦è®“æ•¸å€¼å¹¾æ¬¡æ–¹)
   powers = c(c(1:10), seq(from = 12, to=30, by=2))
   sft = pickSoftThreshold(dataExpr, powerVector=powers, verbose=5)
-  #¾ğª¬¹Ï
+  #æ¨¹ç‹€åœ–
   ## SAVE!
   sampleTree = hclust(dist(dataExpr), method = "average")
   
@@ -186,8 +195,8 @@ for(i in 1:nrow(Leiden_clustering_size))
   pdf(paste("./",foldername,"/",clusterName,"/scaleFree.pdf",sep=""),width = 20, height = 20)
   par(mfrow = c(1,2))
   cex1 = 0.9
-  # ??????¬OSoft threshold (power)¡A??????¬O??????«×ÊI???ªº???¦ô??????¡A???­È¶V°ª¡A
-  # ÊI???¶V²Å¦X??????«×¯S©º (non-scale)
+  # æ©«è»¸æ˜¯Soft threshold (power)ï¼Œç¸±è»¸æ˜¯ç„¡æ¨™åº¦ç¶²çµ¡çš„è©•ä¼°åƒæ•¸ï¼Œæ•¸å€¼è¶Šé«˜ï¼Œ
+  # ç¶²çµ¡è¶Šç¬¦åˆç„¡æ¨™åº¦ç‰¹å¾µ (non-scale) 
   
   plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
        xlab="Soft Threshold (power)",
@@ -195,10 +204,10 @@ for(i in 1:nrow(Leiden_clustering_size))
        main = paste("Scale independence"))
   text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
        labels=powers,cex=cex1,col="red")
-  # ?????????­ã¡CR-square=0.85
+  # ç¯©é¸æ¨™æº–ã€‚ R-square=0.85
   abline(h=0.85,col="red")
   
-  # Soft thresholdÉO¥­§¡???³q©Ê
+  # Soft thresholdèˆ‡å¹³å‡é€£é€šæ€§ 
   plot(sft$fitIndices[,1], sft$fitIndices[,5],
        xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
        main = paste("Mean connectivity"))
@@ -208,7 +217,7 @@ for(i in 1:nrow(Leiden_clustering_size))
   #########
   
   
-  #¦Û°Ê¿ï¾Ü³n»Ö­È¼Æ­È
+  #è‡ªå‹•é¸æ“‡è»Ÿé–¾å€¼æ•¸å€¼
   ## SAVE!
   power = sft$powerEstimate
   cat('Power:',power,'\n',sep=' ',file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T)
@@ -216,7 +225,7 @@ for(i in 1:nrow(Leiden_clustering_size))
   
   
   
-  #¦Û°Ê«Ø¥ßºô¸ô¸ò¼Ò¶ô
+  #è‡ªå‹•å»ºç«‹ç¶²è·¯è·Ÿæ¨¡å¡Š
   net = blockwiseModules(dataExpr, power = power, maxBlockSize = nGenes,
                          TOMType = 'unsigned', minModuleSize = 30,
                          reassignThreshold = 0, mergeCutHeight = 0.25,
@@ -224,17 +233,17 @@ for(i in 1:nrow(Leiden_clustering_size))
                          saveTOMs=TRUE, 
                          loadTOMs=TRUE,
                          verbose = 3)
-  #¼Ò¶ô¼Æ¸ò°ò¦]¼Æ 
+  #æ¨¡å¡Šæ•¸è·ŸåŸºå› æ•¸ 
   ## SAVE!
   write.table(table(net$colors),file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T,row.names=F)
   
   
-  ## ¦Ç¦âªº???**¥¼¤À???**¨ì¼Ò???ªº°ò¦]¡C
+  ## ç°è‰²çš„ç‚ºæœªåˆ†é¡åˆ°æ¨¡å¡Šçš„åŸºå› ã€‚
   # Convert labels to colors for plotting
   moduleLabels = net$colors
   moduleColors = labels2colors(moduleLabels)
   # Plot the dendrogram and the module colors underneath
-  # ¦pªG??????ªG¤£???·N¡A???¥i¥HrecutBlockwiseTrees¡A???¬Ù???ºâ??????
+  # å¦‚æœå°çµæœä¸æ»¿æ„ï¼Œé‚„å¯ä»¥recutBlockwiseTreesï¼Œç¯€çœè¨ˆç®—æ™‚é–“ 
   ## SAVE!
   pdf(paste("./",foldername,"/",clusterName,"/moduleDendrogram.pdf",sep=""),width = 20, height = 20)
   plotDendroAndColors(net$dendrograms[[1]], moduleColors[net$blockGenes[[1]]],
@@ -243,20 +252,20 @@ for(i in 1:nrow(Leiden_clustering_size))
                       addGuide = TRUE, guideHang = 0.05, lwd = 2, font=2)
   dev.off()
   
-  #¥i¥H¤£¥Î¶]¡A¤]¥i¥H¶]¡A¤£·|¤Ó¤[
-  # module eigengene, ¥i¥H???¨î??????¡A§@???¨C???¼Ò???ªº°ò¦]ªí?????????ªº®i¥Ü
+  #å¯ä»¥ä¸ç”¨è·‘ï¼Œä¹Ÿå¯ä»¥è·‘ï¼Œä¸æœƒå¤ªä¹…
+  # module eigengene, å¯ä»¥ç¹ªè£½ç·šåœ–ï¼Œä½œç‚ºæ¯å€‹æ¨¡å¡Šçš„åŸºå› è¡¨é”è¶¨å‹¢çš„å±•ç¤º 
   MEs = net$MEs
   if(ncol(MEs)>2)
   {
-    #¨¾§b,Module¹L¤Ö´N¤£·|°õ¦æ,­Ymodule¥u¦³¤@­Óªº¸Üdendrogramµe¤£¥X¨Ó
-    ### ¤£»İ­n­«·s???ºâ¡A§ï¤U¦C¦W¦r´N¦n
-    ### ©x¤è±Ğµ{¬O­«·s???ºâªº¡A°_©l¥i¥H¤£¥Î???¤\³Â???
+    #é˜²å‘†,Moduleéå°‘å°±ä¸æœƒåŸ·è¡Œ,è‹¥moduleåªæœ‰ä¸€å€‹çš„è©±dendrogramç•«ä¸å‡ºä¾†
+    ### ä¸éœ€è¦é‡æ–°è¨ˆç®—ï¼Œæ”¹ä¸‹åˆ—åå­—å°±å¥½
+    ### å®˜æ–¹æ•™ç¨‹æ˜¯é‡æ–°è¨ˆç®—çš„ï¼Œèµ·å§‹å¯ä»¥ä¸ç”¨é€™éº¼éº»ç…©
     MEs_col = MEs
     colnames(MEs_col) = paste0("ME", labels2colors(as.numeric(str_replace_all(colnames(MEs),"ME",""))))
     MEs_col = orderMEs(MEs_col)
     
-    # ®ÚÕu°ò¦]???ªí???¶q???¦æ»E???©Ò±o¨ìªº¦U¼Ò??????ªº¬Û???©Ê???
-    # marDendro/marHeatmap ???¸m¤U¡B¥ª¡B¤W¡B¥kªº???¶Z
+    # æ ¹æ“šåŸºå› é–“è¡¨é”é‡é€²è¡Œèšé¡æ‰€å¾—åˆ°çš„å„æ¨¡å¡Šé–“çš„ç›¸é—œæ€§åœ–
+    # marDendro/marHeatmap è¨­ç½®ä¸‹ã€å·¦ã€ä¸Šã€å³çš„é‚Šè·
     ## SAVE!
     if(ncol(MEs)>3)
     {
@@ -277,10 +286,10 @@ for(i in 1:nrow(Leiden_clustering_size))
     }
   }
   
-  #³o¨B¥i¥H¤£¥Î¶]¡A«Üªá®É¶¡¡A¦³»İ­n¹Ï¦A¶]
-  # ¦pªGªö¥Î¤À¨B???ºâ¡A©Î???¸mªºblocksize>=???°ò¦]???¡Aª½±µload???ºâ¦nªºTOM???ªG
-  # §_???»İ­n¦A???ºâ¤@¹M¡A¤ñ???¯Ó?????????
-  # TOM = TOMsimilarityFromExpr(dataExpr, power=power, corType=corType, networkType=type)
+  #é€™æ­¥å¯ä»¥ä¸ç”¨è·‘ï¼Œå¾ˆèŠ±æ™‚é–“ï¼Œæœ‰éœ€è¦åœ–å†è·‘
+  # å¦‚æœæ¡ç”¨åˆ†æ­¥è¨ˆç®—ï¼Œæˆ–è¨­ç½®çš„blocksize>=ç¸½åŸºå› æ•¸ï¼Œç›´æ¥loadè¨ˆç®—å¥½çš„TOMçµæœ
+  # å¦å‰‡éœ€è¦å†è¨ˆç®—ä¸€éï¼Œæ¯”è¼ƒè€—è²»æ™‚é–“
+  # TOM = TOMsimilarityFromExpr(dataExpr, power=power, corType=corType, networkType=type) 
   load(net$TOMFiles[1], verbose=T)
   
   ## Loading objects:
@@ -296,7 +305,7 @@ for(i in 1:nrow(Leiden_clustering_size))
   diag(plotTOM) = NA
   # Call the plot function
   ## SAVE!
-  # ???¤@³¡¤À¯S???¯Ó???¡A¦æ¦C¦P???°µ??????»E???
+  # é€™ä¸€éƒ¨åˆ†ç‰¹åˆ¥è€—æ™‚ï¼Œè¡Œåˆ—åŒæ™‚åšå±¤ç´šèšé¡ 
   pdf(paste("./",foldername,"/",clusterName,"/TOM.pdf",sep=""),width = 20, height = 20)
   TOMplot(plotTOM, net$dendrograms, moduleColors, 
           main = "Network heatmap plot, all genes")
@@ -304,15 +313,15 @@ for(i in 1:nrow(Leiden_clustering_size))
   
   
   
-  #³o¨B¥i¥H¥ı¸õ¹L¡A¤§«á¦³»İ­n¦A¦^¨Ó¶]¡A³o¨B¬O¥i¥H³]©w»Ö­Èoutput¥Xºô¸ô¹Ïªº¨BÆJ
+  #é€™æ­¥å¯ä»¥å…ˆè·³éï¼Œä¹‹å¾Œæœ‰éœ€è¦å†å›ä¾†è·‘ï¼Œé€™æ­¥æ˜¯å¯ä»¥è¨­å®šé–¥å€¼outputå‡ºç¶²è·¯åœ–çš„æ­¥é©Ÿ
   probes = colnames(dataExpr)
   dimnames(TOM) <- list(probes, probes)
   workdir <- getwd()
   setwd(paste(workdir,"/",foldername,"/",clusterName,"/modules",sep=""))
   
   # Export the network into edge and node list files Cytoscape can read
-  # threshold Àq??????0.5, ¥i¥H®ÚÕu¦Û¤vªº»İ­n???¾ã¡A¤]¥i¥H³£???¥X¦Z¦b
-  # cytoscape¤¤¦A???¾ã
+  # threshold é»˜èªç‚º0.5, å¯ä»¥æ ¹æ“šè‡ªå·±çš„éœ€è¦èª¿æ•´ï¼Œä¹Ÿå¯ä»¥éƒ½å°å‡ºå¾Œåœ¨
+  # cytoscapeä¸­å†èª¿æ•´ 
   cyt = exportNetworkToCytoscape(TOM,
                                  edgeFile = paste(clusterName,"edges.txt",sep=""),
                                  nodeFile = paste(clusterName,"nodes.txt",sep=""),
@@ -331,12 +340,12 @@ for(i in 1:nrow(Leiden_clustering_size))
   if(ncol(MEs)>1)
   {
     ###new code
-    for(j in 1:nrow(Leiden_clustering_size))
+    for(j in 1:nrow(clustering_size))
     {
       cat("round ",i,',',j,"\n")
       if(j!=i)
       {
-        #¥D­ncluster¹ï©Ò¦³¨ä¥Lªºcluster, ¦b¨ä¥Lcluster¤¤¥Î¤U­±ªºtest©Mtrain
+        #ä¸»è¦clusterå°æ‰€æœ‰å…¶ä»–çš„cluster, åœ¨å…¶ä»–clusterä¸­ç”¨ä¸‹é¢çš„testå’Œtrain
         cat("other cluster\n")
         test = read.csv(paste('./',foldername,'/Leiden_cluster_',j-1,'.csv',sep=""), check.names=FALSE)
         test = data.matrix(test)
@@ -344,8 +353,8 @@ for(i in 1:nrow(Leiden_clustering_size))
         ######
       }else
       {
-        #³o¨B¬O§â­ì¥»ªºdata¤À¤@³¡¤À¥X¨Ó·ítest¡A©Ò¥H¼Æ¦r­n¨Ìcell¼Æ¶q¥h§ï(§Ú³oÃä¬O242 cells)
-        #samople¼Æ¶q/4
+        #é€™æ­¥æ˜¯æŠŠåŸæœ¬çš„dataåˆ†ä¸€éƒ¨åˆ†å‡ºä¾†ç•¶testï¼Œæ‰€ä»¥æ•¸å­—è¦ä¾cellæ•¸é‡å»æ”¹(æˆ‘é€™é‚Šæ˜¯242 cells)
+        #samopleæ•¸é‡/4
         #now 438 cells
         #438=109*4+2
         #m=c(rep(c(1:4),109))  "109*4"
@@ -383,7 +392,7 @@ for(i in 1:nrow(Leiden_clustering_size))
       multiExpr = list(Train = list(data = train), Test = list(data = test))
       multiColor = list(Train = moduleColors)
       cat("round ",i,',',j,"mp \n")
-      #preservation¡Anpermutations 200´N°÷¤F¡A¨C¦¸¶]¥X¨Ó¼Æ¦r¤£¤@¼Ë¬O¥¿±`ªº¡A¦ı¬O¤£·|®t¤Ó¦h
+      #preservationï¼Œnpermutations 200å°±å¤ äº†ï¼Œæ¯æ¬¡è·‘å‡ºä¾†æ•¸å­—ä¸ä¸€æ¨£æ˜¯æ­£å¸¸çš„ï¼Œä½†æ˜¯ä¸æœƒå·®å¤ªå¤š
       mp = modulePreservation(multiExpr, multiColor,
                               referenceNetworks = 1,
                               nPermutations = 200,
@@ -396,45 +405,45 @@ for(i in 1:nrow(Leiden_clustering_size))
       modColors = rownames(mp$preservation$observed[[ref]][[test]])
       moduleSizes = mp$preservation$Z[[ref]][[test]][, 1]
       
-      #¥h±¼"grey", "gold"
-      #%in%¤£¦b³o¸Ìªº°ò¦]
+      #å»æ‰"grey", "gold"
+      #%in%ä¸åœ¨é€™è£¡çš„åŸºå› 
       plotMods = !(modColors %in% c("grey", "gold"));
       text = modColors[plotMods]
       plotData = cbind(mp$preservation$observed[[ref]][[test]][, 2], mp$preservation$Z[[ref]][[test]][, 2])
       
-      #³oÃäZsummary.pres¨ºÄæ´N¬OZsummary score
+      #é€™é‚ŠZsummary.presé‚£æ¬„å°±æ˜¯Zsummary score
       statsObs = cbind(mp$quality$observed[[ref]][[test]][, -1], mp$preservation$observed[[ref]][[test]][, -1])
       statsZ = cbind(mp$quality$Z[[ref]][[test]][, -1], mp$preservation$Z[[ref]][[test]][, -1])
-      #Àx¦smoduleªºpreservation Zscore table
+      #å„²å­˜moduleçš„preservation Zscore table
       ## SAVE!
-      #¦¹³B¬Oclusterªºmodule¦b¦Û¤vªºcluster¤¤ªºpreservation
+      #æ­¤è™•æ˜¯clusterçš„moduleåœ¨è‡ªå·±çš„clusterä¸­çš„preservation
       write.csv(data.frame(cbind(statsObs[, c("medianRank.pres", "medianRank.qual")],
                                  signif(statsZ[, c("Zsummary.pres", "Zsummary.qual")], 2))),
                 paste("./",foldername,"/",clusterName,"/preservation_c",i-1,"-c",j-1,"_200permutation_Zscore.csv",sep=""))
       #####
-      ##¦¬¶°module¦b¨C­Óclusterªºpreservation Zscore
+      ##æ”¶é›†moduleåœ¨æ¯å€‹clusterçš„preservation Zscore
       #####
       if (j == 1){
         mpZscore<-as.data.frame(statsZ["Zsummary.pres"])
-        #mpZscore ´N¬O module preservation Z score
+        #mpZscore å°±æ˜¯ module preservation Z score
       }
       else
         mpZscore <- cbind(mpZscore,as.data.frame(statsZ["Zsummary.pres"]))
       
-      ###Åã¥Ü z scoreªº code
-      #0­n§ï¦¨¥iÅÜ°ÊÅÜ¼Æ,«ü¥Xcluster´X,c0=cluster0,°j°éindex:i­n-1
+      ###é¡¯ç¤º z scoreçš„ code
+      #0è¦æ”¹æˆå¯è®Šå‹•è®Šæ•¸,æŒ‡å‡ºclusterå¹¾,c0=cluster0,è¿´åœˆindex:iè¦-1
       # Compare preservation to quality:
       #print(cbind(statsObs[, c("medianRank.pres", "medianRank.qual")],signif(statsZ[, c("Zsummary.pres", "Zsummary.qual")], 2)) )
       ###
       
-      ##preservation¥iµø¤Æ¡A¤@¯ë¨Ó»¡¥u»İ­n§ïÀÉ¦W¸ô®|
+      ##preservationå¯è¦–åŒ–ï¼Œä¸€èˆ¬ä¾†èªªåªéœ€è¦æ”¹æª”åè·¯å¾‘
       mains = c("Preservation Median rank", "Preservation Zsummary")
-      #ÀÉ¦W
+      #æª”å
       ## SAVE!
       pdf(paste("./",foldername,"/",clusterName,"/preservation_c",i-1,"-c",j-1,"_200permutation_Zscore.pdf",sep=""),width = 20, height = 10)
-      ##¤@¦æ¨â¦C
+      ##ä¸€è¡Œå…©åˆ—
       par(mfrow = c(1,2))
-      ##¨ì¥|Ãäªº¶ZÂ÷
+      ##åˆ°å››é‚Šçš„è·é›¢
       par(mar = c(4.5,4.5,2.5,1))
       for (p in 1:2)
       {
@@ -447,15 +456,15 @@ for(i in 1:nrow(Leiden_clustering_size))
           ylim = c(min - 0.1 * (max-min), max + 0.1 * (max-min))
         } else
           ylim = c(min - 0.1 * (max-min), max + 0.1 * (max-min))
-        #bg ÃC¦â pch ¶ê°éªººØÃş
+        #bg é¡è‰² pch åœ“åœˆçš„ç¨®é¡
         plot(moduleSizes[plotMods], plotData[plotMods, p], col = 1, bg = modColors[plotMods], pch = 21,
              main = mains[p],
-             ##¶ê°éªº¤j¤p
+             ##åœ“åœˆçš„å¤§å°
              cex = 2.4,
              ylab = mains[p], xlab = "Module size", log = "x",
              ylim = ylim,
              xlim = c(10, 2000), cex.lab = 1.2, cex.axis = 1.2, cex.main =1.4, font.lab=2)
-        ##¶K¤W¼ĞÅÒ
+        ##è²¼ä¸Šæ¨™ç±¤
         labelPoints(moduleSizes[plotMods], plotData[plotMods, p], text, cex = 1, offs = 0.08, font.lab=2);
         # For Zsummary, add threshold lines
         if (p==2)
@@ -469,13 +478,13 @@ for(i in 1:nrow(Leiden_clustering_size))
       dev.off()
       
     }
-    ##Àx¦smodule¦b¨C­Ócluster ªºpreservation Zscore
+    ##å„²å­˜moduleåœ¨æ¯å€‹cluster çš„preservation Zscore
     ## SAVE!
     mpZscore <- t(mpZscore)
-    rownames(mpZscore) <- c(0:(nrow(Leiden_clustering_size)-1))
+    rownames(mpZscore) <- c(0:(nrow(clustering_size)-1))
     write.csv(mpZscore,paste("./",foldername,"/",clusterName,"/module_preservation_Zscore.csv",sep = ""))
     
-    #¿é¥X¨C­Ómoduleªº°ò¦]¡A¦bµ{¦¡¤@¶}ÀY¤w¸g³Ğ¦n¸ê®Æ§¨,¦b¸Óclusterªºmodlue¸ê®Æ§¨¤¤¾Ş§@
+    #è¼¸å‡ºæ¯å€‹moduleçš„åŸºå› ï¼Œåœ¨ç¨‹å¼ä¸€é–‹é ­å·²ç¶“å‰µå¥½è³‡æ–™å¤¾,åœ¨è©²clusterçš„modlueè³‡æ–™å¤¾ä¸­æ“ä½œ
     ## SAVE!
     for(j in 1:length(text))
     {
@@ -484,12 +493,12 @@ for(i in 1:nrow(Leiden_clustering_size))
     }
   }else
   {
-    grey <- c(rep(0,nrow(Leiden_clustering_size)))
-    gold <- c(rep(0,nrow(Leiden_clustering_size)))
+    grey <- c(rep(0,nrow(clustering_size)))
+    gold <- c(rep(0,nrow(clustering_size)))
     blankdataframe <- data.frame(gold, grey)
     rownames(blankdataframe) <- paste(c(0:(nrow(blankdataframe)-1)))
-    ##­n´¡¤J¤@­ÓªÅ¥Õªºpreservation z score
-    ##column¥u¦³grey ©Mgold, row =cluster¼Æ
+    ##è¦æ’å…¥ä¸€å€‹ç©ºç™½çš„preservation z score
+    ##columnåªæœ‰grey å’Œgold, row =clusteræ•¸
     #blankdataframe=
     write.csv(blankdataframe,paste("./",foldername,"/",clusterName,"/module_preservation_Zscore.csv",sep = ""))         
     cat('no module.\n')
