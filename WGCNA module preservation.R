@@ -100,7 +100,7 @@ if(1>0){
 setwd('C:/Users/user/Desktop/test/scanpy')
 foldername='pbmc3k'
 Clusteringmethod='Leiden'
-clustering_size=read.csv('/',foldername,'/',Clusteringmethod,'_clustering_size.csv', check.names=FALSE)
+clustering_size=read.csv(paste('./',foldername,'/',Clusteringmethod,'_clustering_size.csv',sep=""), check.names=FALSE)
 
 
 for(i in 1:nrow(clustering_size))
