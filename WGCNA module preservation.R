@@ -99,7 +99,7 @@ if(1>0){
 
 
 setwd('C:/Users/user/Desktop/test/scanpy')
-foldername='pbmc3k'
+foldername='scv_pancrease'
 Clusteringmethod='Leiden'
 clustering_size=read.csv(paste('./',foldername,'/',Clusteringmethod,'_clustering_size.csv',sep=""), check.names=FALSE)
 
@@ -222,286 +222,287 @@ for(i in 1:nrow(clustering_size))
   ## SAVE!
   power = sft$powerEstimate
   cat('Power:',power,'\n',sep=' ',file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T)
-  
-  
-  
-  
-  #自動建立網路跟模塊
-  net = blockwiseModules(dataExpr, power = power, maxBlockSize = nGenes,
-                         TOMType = 'unsigned', minModuleSize = 30,
-                         reassignThreshold = 0, mergeCutHeight = 0.25,
-                         numericLabels = TRUE, pamRespectsDendro = FALSE,
-                         saveTOMs=TRUE, 
-                         loadTOMs=TRUE,
-                         verbose = 3)
-  #模塊數跟基因數 
-  ## SAVE!
-  write.table(table(net$colors),file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T,row.names=F)
-  
-  
-  ## 灰色的為未分類到模塊的基因。
-  # Convert labels to colors for plotting
-  moduleLabels = net$colors
-  moduleColors = labels2colors(moduleLabels)
-  # Plot the dendrogram and the module colors underneath
-  # 如果對結果不滿意，還可以recutBlockwiseTrees，節省計算時間 
-  ## SAVE!
-  pdf(paste("./",foldername,"/",clusterName,"/moduleDendrogram.pdf",sep=""),width = 20, height = 20)
-  plotDendroAndColors(net$dendrograms[[1]], moduleColors[net$blockGenes[[1]]],
-                      "Module colors",
-                      dendroLabels = FALSE, hang = 0.03,
-                      addGuide = TRUE, guideHang = 0.05, lwd = 2, font=2)
-  dev.off()
-  
-  #可以不用跑，也可以跑，不會太久
-  # module eigengene, 可以繪製線圖，作為每個模塊的基因表達趨勢的展示 
-  MEs = net$MEs
-  if(ncol(MEs)>2)
-  {
-    #防呆,Module過少就不會執行,若module只有一個的話dendrogram畫不出來
-    ### 不需要重新計算，改下列名字就好
-    ### 官方教程是重新計算的，起始可以不用這麼麻煩
-    MEs_col = MEs
-    colnames(MEs_col) = paste0("ME", labels2colors(as.numeric(str_replace_all(colnames(MEs),"ME",""))))
-    MEs_col = orderMEs(MEs_col)
-    
-    # 根據基因間表達量進行聚類所得到的各模塊間的相關性圖
-    # marDendro/marHeatmap 設置下、左、上、右的邊距
+  if(is.na(power)){
+    print("not scale free.")
+  }else{
+    #自動建立網路跟模塊
+    net = blockwiseModules(dataExpr, power = power, maxBlockSize = nGenes,
+                           TOMType = 'unsigned', minModuleSize = 30,
+                           reassignThreshold = 0, mergeCutHeight = 0.25,
+                           numericLabels = TRUE, pamRespectsDendro = FALSE,
+                           saveTOMs=TRUE, 
+                           loadTOMs=TRUE,
+                           verbose = 3)
+    #模塊數跟基因數 
     ## SAVE!
-    if(ncol(MEs)>3)
+    write.table(table(net$colors),file=(paste("./",foldername,"/",clusterName,"/info.txt",sep="")),append = T,row.names=F)
+    
+    
+    ## 灰色的為未分類到模塊的基因。
+    # Convert labels to colors for plotting
+    moduleLabels = net$colors
+    moduleColors = labels2colors(moduleLabels)
+    # Plot the dendrogram and the module colors underneath
+    # 如果對結果不滿意，還可以recutBlockwiseTrees，節省計算時間 
+    ## SAVE!
+    pdf(paste("./",foldername,"/",clusterName,"/moduleDendrogram.pdf",sep=""),width = 20, height = 20)
+    plotDendroAndColors(net$dendrograms[[1]], moduleColors[net$blockGenes[[1]]],
+                        "Module colors",
+                        dendroLabels = FALSE, hang = 0.03,
+                        addGuide = TRUE, guideHang = 0.05, lwd = 2, font=2)
+    dev.off()
+    
+    #可以不用跑，也可以跑，不會太久
+    # module eigengene, 可以繪製線圖，作為每個模塊的基因表達趨勢的展示 
+    MEs = net$MEs
+    if(ncol(MEs)>2)
     {
-      pdf(paste("./",foldername,"/",clusterName,"/moduleEigengene.pdf",sep=""),width = 20, height = 20)
-      plotEigengeneNetworks(MEs_col, "Eigengene adjacency heatmap and dendrogram",
-                            marDendro = c(3,3,2,4),
-                            marHeatmap = c(3,4,2,2), plotDendrograms = T, 
-                            xLabelsAngle = 90)
-      dev.off()
-    }else
-    {
-      pdf(paste("./",foldername,"/",clusterName,"/moduleEigengene.pdf",sep=""),width = 20, height = 20)
-      plotEigengeneNetworks(MEs_col, "Eigengene adjacency heatmap",
-                            marDendro = c(3,3,2,4),
-                            marHeatmap = c(3,4,2,2), plotDendrograms = F, 
-                            xLabelsAngle = 90)
-      dev.off()
-    }
-  }
-  
-  #這步可以不用跑，很花時間，有需要圖再跑
-  # 如果採用分步計算，或設置的blocksize>=總基因數，直接load計算好的TOM結果
-  # 否則需要再計算一遍，比較耗費時間
-  # TOM = TOMsimilarityFromExpr(dataExpr, power=power, corType=corType, networkType=type) 
-  load(net$TOMFiles[1], verbose=T)
-  
-  ## Loading objects:
-  ##   TOM
-  
-  TOM <- as.matrix(TOM)
-  
-  dissTOM = 1-TOM
-  # Transform dissTOM with a power to make moderately strong 
-  # connections more visible in the heatmap
-  plotTOM = dissTOM^7
-  # Set diagonal to NA for a nicer plot
-  diag(plotTOM) = NA
-  # Call the plot function
-  ## SAVE!
-  # 這一部分特別耗時，行列同時做層級聚類 
-  pdf(paste("./",foldername,"/",clusterName,"/TOM.pdf",sep=""),width = 20, height = 20)
-  TOMplot(plotTOM, net$dendrograms, moduleColors, 
-          main = "Network heatmap plot, all genes")
-  dev.off()
-  
-  
-  
-  #這步可以先跳過，之後有需要再回來跑，這步是可以設定閥值output出網路圖的步驟
-  probes = colnames(dataExpr)
-  dimnames(TOM) <- list(probes, probes)
-  workdir <- getwd()
-  setwd(paste(workdir,"/",foldername,"/",clusterName,"/modules",sep=""))
-  
-  # Export the network into edge and node list files Cytoscape can read
-  # threshold 默認為0.5, 可以根據自己的需要調整，也可以都導出後在
-  # cytoscape中再調整 
-  cyt = exportNetworkToCytoscape(TOM,
-                                 edgeFile = paste(clusterName,"edges.txt",sep=""),
-                                 nodeFile = paste(clusterName,"nodes.txt",sep=""),
-                                 weighted = TRUE, threshold = 0,
-                                 nodeNames = probes, nodeAttr = moduleColors)
-  setwd(paste(workdir))
-  
-  
-  
-  
-  #####################
-  #preservation######
-  #####################
-  
-  
-  if(ncol(MEs)>1)
-  {
-    ###new code
-    for(j in 1:nrow(clustering_size))
-    {
-      cat("round ",i,',',j,"\n")
-      if(j!=i)
+      #防呆,Module過少就不會執行,若module只有一個的話dendrogram畫不出來
+      ### 不需要重新計算，改下列名字就好
+      ### 官方教程是重新計算的，起始可以不用這麼麻煩
+      MEs_col = MEs
+      colnames(MEs_col) = paste0("ME", labels2colors(as.numeric(str_replace_all(colnames(MEs),"ME",""))))
+      MEs_col = orderMEs(MEs_col)
+      
+      # 根據基因間表達量進行聚類所得到的各模塊間的相關性圖
+      # marDendro/marHeatmap 設置下、左、上、右的邊距
+      ## SAVE!
+      if(ncol(MEs)>3)
       {
-        #主要cluster對所有其他的cluster, 在其他cluster中用下面的test和train
-        cat("other cluster\n")
-        test = read.csv(paste('./',foldername,'/Leiden_cluster_',j-1,'.csv',sep=""), check.names=FALSE)
-        test = data.matrix(test)
-        train = dataExpr
-        ######
+        pdf(paste("./",foldername,"/",clusterName,"/moduleEigengene.pdf",sep=""),width = 20, height = 20)
+        plotEigengeneNetworks(MEs_col, "Eigengene adjacency heatmap and dendrogram",
+                              marDendro = c(3,3,2,4),
+                              marHeatmap = c(3,4,2,2), plotDendrograms = T, 
+                              xLabelsAngle = 90)
+        dev.off()
       }else
       {
-        #這步是把原本的data分一部分出來當test，所以數字要依cell數量去改(我這邊是242 cells)
-        #samople數量/4
-        #now 438 cells
-        #438=109*4+2
-        #m=c(rep(c(1:4),109))  "109*4"
-        #n=c(1,2)   "+2"
-        cat("same cluster\n")
-        train_dataset = as.data.frame(dataExpr)
-        m = c(rep(c(1:4),(clusterCellNumber%/%4)))
-        n = c(1:(clusterCellNumber%%4))
-        if(clusterCellNumber%%4!=0){
-          m = c(m,n)
+        pdf(paste("./",foldername,"/",clusterName,"/moduleEigengene.pdf",sep=""),width = 20, height = 20)
+        plotEigengeneNetworks(MEs_col, "Eigengene adjacency heatmap",
+                              marDendro = c(3,3,2,4),
+                              marHeatmap = c(3,4,2,2), plotDendrograms = F, 
+                              xLabelsAngle = 90)
+        dev.off()
+      }
+    }
+    
+    #這步可以不用跑，很花時間，有需要圖再跑
+    # 如果採用分步計算，或設置的blocksize>=總基因數，直接load計算好的TOM結果
+    # 否則需要再計算一遍，比較耗費時間
+    # TOM = TOMsimilarityFromExpr(dataExpr, power=power, corType=corType, networkType=type) 
+    load(net$TOMFiles[1], verbose=T)
+    
+    ## Loading objects:
+    ##   TOM
+    
+    TOM <- as.matrix(TOM)
+    
+    dissTOM = 1-TOM
+    # Transform dissTOM with a power to make moderately strong 
+    # connections more visible in the heatmap
+    plotTOM = dissTOM^7
+    # Set diagonal to NA for a nicer plot
+    diag(plotTOM) = NA
+    # Call the plot function
+    ## SAVE!
+    # 這一部分特別耗時，行列同時做層級聚類 
+    pdf(paste("./",foldername,"/",clusterName,"/TOM.pdf",sep=""),width = 20, height = 20)
+    TOMplot(plotTOM, net$dendrograms, moduleColors, 
+            main = "Network heatmap plot, all genes")
+    dev.off()
+    
+    
+    
+    #這步可以先跳過，之後有需要再回來跑，這步是可以設定閥值output出網路圖的步驟
+    probes = colnames(dataExpr)
+    dimnames(TOM) <- list(probes, probes)
+    workdir <- getwd()
+    setwd(paste(workdir,"/",foldername,"/",clusterName,"/modules",sep=""))
+    
+    # Export the network into edge and node list files Cytoscape can read
+    # threshold 默認為0.5, 可以根據自己的需要調整，也可以都導出後在
+    # cytoscape中再調整 
+    cyt = exportNetworkToCytoscape(TOM,
+                                   edgeFile = paste(clusterName,"edges.txt",sep=""),
+                                   nodeFile = paste(clusterName,"nodes.txt",sep=""),
+                                   weighted = TRUE, threshold = 0,
+                                   nodeNames = probes, nodeAttr = moduleColors)
+    setwd(paste(workdir))
+    
+    
+    
+    
+    #####################
+    #preservation######
+    #####################
+    
+    
+    if(ncol(MEs)>1)
+    {
+      ###new code
+      for(j in 1:nrow(clustering_size))
+      {
+        cat("round ",i,',',j,"\n")
+        if(j!=i)
+        {
+          #主要cluster對所有其他的cluster, 在其他cluster中用下面的test和train
+          cat("other cluster\n")
+          test = read.csv(paste('./',foldername,'/',clustering_size[j,1],'.csv',sep=""), check.names=FALSE)
+          test = data.matrix(test)
+          train = dataExpr
+          ######
+        }else
+        {
+          #這步是把原本的data分一部分出來當test，所以數字要依cell數量去改(我這邊是242 cells)
+          #samople數量/4
+          #now 438 cells
+          #438=109*4+2
+          #m=c(rep(c(1:4),109))  "109*4"
+          #n=c(1,2)   "+2"
+          cat("same cluster\n")
+          train_dataset = as.data.frame(dataExpr)
+          m = c(rep(c(1:4),(clusterCellNumber%/%4)))
+          n = c(1:(clusterCellNumber%%4))
+          if(clusterCellNumber%%4!=0){
+            m = c(m,n)
+          }
+          train_dataset = cbind(m,train_dataset)
+          colnames(train_dataset)[1] = "group"
+          inTrain = createDataPartition(y=train_dataset$group,p=0.25,list=FALSE)
+          train = train_dataset[inTrain,-1]
+          test = train_dataset[-inTrain,-1]
+          
         }
-        train_dataset = cbind(m,train_dataset)
-        colnames(train_dataset)[1] = "group"
-        inTrain = createDataPartition(y=train_dataset$group,p=0.25,list=FALSE)
-        train = train_dataset[inTrain,-1]
-        test = train_dataset[-inTrain,-1]
+        #train = as.data.frame(Data)
+        
+        gsg = goodSamplesGenes(test, verbose = 3);
+        gsg$allOK
+        if (!gsg$allOK)
+        {
+          # Optionally, print the gene and sample names that were removed:
+          if (sum(!gsg$goodGenes)>0) 
+            printFlush(paste("Removing genes:", paste(names(test)[!gsg$goodGenes], collapse = ", ")));
+          if (sum(!gsg$goodSamples)>0) 
+            printFlush(paste("Removing samples:", paste(rownames(test)[!gsg$goodSamples], collapse = ", ")));
+          # Remove the offending genes and samples from the data:
+          test = test[gsg$goodSamples, gsg$goodGenes]
+        }
+        
+        setLabels = c("Train", "Test")
+        multiExpr = list(Train = list(data = train), Test = list(data = test))
+        multiColor = list(Train = moduleColors)
+        cat("round ",i,',',j,"mp \n")
+        #preservation，npermutations 200就夠了，每次跑出來數字不一樣是正常的，但是不會差太多
+        mp = modulePreservation(multiExpr, multiColor,
+                                referenceNetworks = 1,
+                                nPermutations = 200,
+                                randomSeed = 1,
+                                quickCor = 0,
+                                verbose = 3)
+        
+        ref=1
+        test=2
+        modColors = rownames(mp$preservation$observed[[ref]][[test]])
+        moduleSizes = mp$preservation$Z[[ref]][[test]][, 1]
+        
+        #去掉"grey", "gold"
+        #%in%不在這裡的基因
+        plotMods = !(modColors %in% c("grey", "gold"));
+        text = modColors[plotMods]
+        plotData = cbind(mp$preservation$observed[[ref]][[test]][, 2], mp$preservation$Z[[ref]][[test]][, 2])
+        
+        #這邊Zsummary.pres那欄就是Zsummary score
+        statsObs = cbind(mp$quality$observed[[ref]][[test]][, -1], mp$preservation$observed[[ref]][[test]][, -1])
+        statsZ = cbind(mp$quality$Z[[ref]][[test]][, -1], mp$preservation$Z[[ref]][[test]][, -1])
+        #儲存module的preservation Zscore table
+        ## SAVE!
+        #此處是cluster的module在自己的cluster中的preservation
+        write.csv(data.frame(cbind(statsObs[, c("medianRank.pres", "medianRank.qual")],
+                                   signif(statsZ[, c("Zsummary.pres", "Zsummary.qual")], 2))),
+                  paste("./",foldername,"/",clusterName,"/preservation_c",i-1,"-c",j-1,"_200permutation_Zscore.csv",sep=""))
+        #####
+        ##收集module在每個cluster的preservation Zscore
+        #####
+        if (j == 1){
+          mpZscore<-as.data.frame(statsZ["Zsummary.pres"])
+          #mpZscore 就是 module preservation Z score
+        }
+        else
+          mpZscore <- cbind(mpZscore,as.data.frame(statsZ["Zsummary.pres"]))
+        
+        ###顯示 z score的 code
+        #0要改成可變動變數,指出cluster幾,c0=cluster0,迴圈index:i要-1
+        # Compare preservation to quality:
+        #print(cbind(statsObs[, c("medianRank.pres", "medianRank.qual")],signif(statsZ[, c("Zsummary.pres", "Zsummary.qual")], 2)) )
+        ###
+        
+        ##preservation可視化，一般來說只需要改檔名路徑
+        mains = c("Preservation Median rank", "Preservation Zsummary")
+        #檔名
+        ## SAVE!
+        pdf(paste("./",foldername,"/",clusterName,"/preservation_c",i-1,"-c",j-1,"_200permutation_Zscore.pdf",sep=""),width = 20, height = 10)
+        ##一行兩列
+        par(mfrow = c(1,2))
+        ##到四邊的距離
+        par(mar = c(4.5,4.5,2.5,1))
+        for (p in 1:2)
+        {
+          min = min(plotData[, p], na.rm = TRUE);
+          max = max(plotData[, p], na.rm = TRUE);
+          # Adjust ploting ranges appropriately
+          if (p==2)
+          {
+            if (min > -max/10) min = -max/10
+            ylim = c(min - 0.1 * (max-min), max + 0.1 * (max-min))
+          } else
+            ylim = c(min - 0.1 * (max-min), max + 0.1 * (max-min))
+          #bg 顏色 pch 圓圈的種類
+          plot(moduleSizes[plotMods], plotData[plotMods, p], col = 1, bg = modColors[plotMods], pch = 21,
+               main = mains[p],
+               ##圓圈的大小
+               cex = 2.4,
+               ylab = mains[p], xlab = "Module size", log = "x",
+               ylim = ylim,
+               xlim = c(10, 2000), cex.lab = 1.2, cex.axis = 1.2, cex.main =1.4, font.lab=2)
+          ##貼上標籤
+          labelPoints(moduleSizes[plotMods], plotData[plotMods, p], text, cex = 1, offs = 0.08, font.lab=2);
+          # For Zsummary, add threshold lines
+          if (p==2)
+          {
+            abline(h=0)
+            abline(h=2, col = "blue", lty = 2)
+            abline(h=10, col = "darkgreen", lty = 2)
+          }
+        }
+        box(which = "plot", col = "black", lwd = 5)
+        dev.off()
         
       }
-      #train = as.data.frame(Data)
-      
-      gsg = goodSamplesGenes(test, verbose = 3);
-      gsg$allOK
-      if (!gsg$allOK)
-      {
-        # Optionally, print the gene and sample names that were removed:
-        if (sum(!gsg$goodGenes)>0) 
-          printFlush(paste("Removing genes:", paste(names(test)[!gsg$goodGenes], collapse = ", ")));
-        if (sum(!gsg$goodSamples)>0) 
-          printFlush(paste("Removing samples:", paste(rownames(test)[!gsg$goodSamples], collapse = ", ")));
-        # Remove the offending genes and samples from the data:
-        test = test[gsg$goodSamples, gsg$goodGenes]
-      }
-      
-      setLabels = c("Train", "Test")
-      multiExpr = list(Train = list(data = train), Test = list(data = test))
-      multiColor = list(Train = moduleColors)
-      cat("round ",i,',',j,"mp \n")
-      #preservation，npermutations 200就夠了，每次跑出來數字不一樣是正常的，但是不會差太多
-      mp = modulePreservation(multiExpr, multiColor,
-                              referenceNetworks = 1,
-                              nPermutations = 200,
-                              randomSeed = 1,
-                              quickCor = 0,
-                              verbose = 3)
-      
-      ref=1
-      test=2
-      modColors = rownames(mp$preservation$observed[[ref]][[test]])
-      moduleSizes = mp$preservation$Z[[ref]][[test]][, 1]
-      
-      #去掉"grey", "gold"
-      #%in%不在這裡的基因
-      plotMods = !(modColors %in% c("grey", "gold"));
-      text = modColors[plotMods]
-      plotData = cbind(mp$preservation$observed[[ref]][[test]][, 2], mp$preservation$Z[[ref]][[test]][, 2])
-      
-      #這邊Zsummary.pres那欄就是Zsummary score
-      statsObs = cbind(mp$quality$observed[[ref]][[test]][, -1], mp$preservation$observed[[ref]][[test]][, -1])
-      statsZ = cbind(mp$quality$Z[[ref]][[test]][, -1], mp$preservation$Z[[ref]][[test]][, -1])
-      #儲存module的preservation Zscore table
+      ##儲存module在每個cluster 的preservation Zscore
       ## SAVE!
-      #此處是cluster的module在自己的cluster中的preservation
-      write.csv(data.frame(cbind(statsObs[, c("medianRank.pres", "medianRank.qual")],
-                                 signif(statsZ[, c("Zsummary.pres", "Zsummary.qual")], 2))),
-                paste("./",foldername,"/",clusterName,"/preservation_c",i-1,"-c",j-1,"_200permutation_Zscore.csv",sep=""))
-      #####
-      ##收集module在每個cluster的preservation Zscore
-      #####
-      if (j == 1){
-        mpZscore<-as.data.frame(statsZ["Zsummary.pres"])
-        #mpZscore 就是 module preservation Z score
-      }
-      else
-        mpZscore <- cbind(mpZscore,as.data.frame(statsZ["Zsummary.pres"]))
+      mpZscore <- t(mpZscore)
+      rownames(mpZscore) <- c(0:(nrow(clustering_size)-1))
+      write.csv(mpZscore,paste("./",foldername,"/",clusterName,"/module_preservation_Zscore.csv",sep = ""))
       
-      ###顯示 z score的 code
-      #0要改成可變動變數,指出cluster幾,c0=cluster0,迴圈index:i要-1
-      # Compare preservation to quality:
-      #print(cbind(statsObs[, c("medianRank.pres", "medianRank.qual")],signif(statsZ[, c("Zsummary.pres", "Zsummary.qual")], 2)) )
-      ###
-      
-      ##preservation可視化，一般來說只需要改檔名路徑
-      mains = c("Preservation Median rank", "Preservation Zsummary")
-      #檔名
+      #輸出每個module的基因，在程式一開頭已經創好資料夾,在該cluster的modlue資料夾中操作
       ## SAVE!
-      pdf(paste("./",foldername,"/",clusterName,"/preservation_c",i-1,"-c",j-1,"_200permutation_Zscore.pdf",sep=""),width = 20, height = 10)
-      ##一行兩列
-      par(mfrow = c(1,2))
-      ##到四邊的距離
-      par(mar = c(4.5,4.5,2.5,1))
-      for (p in 1:2)
+      for(j in 1:length(text))
       {
-        min = min(plotData[, p], na.rm = TRUE);
-        max = max(plotData[, p], na.rm = TRUE);
-        # Adjust ploting ranges appropriately
-        if (p==2)
-        {
-          if (min > -max/10) min = -max/10
-          ylim = c(min - 0.1 * (max-min), max + 0.1 * (max-min))
-        } else
-          ylim = c(min - 0.1 * (max-min), max + 0.1 * (max-min))
-        #bg 顏色 pch 圓圈的種類
-        plot(moduleSizes[plotMods], plotData[plotMods, p], col = 1, bg = modColors[plotMods], pch = 21,
-             main = mains[p],
-             ##圓圈的大小
-             cex = 2.4,
-             ylab = mains[p], xlab = "Module size", log = "x",
-             ylim = ylim,
-             xlim = c(10, 2000), cex.lab = 1.2, cex.axis = 1.2, cex.main =1.4, font.lab=2)
-        ##貼上標籤
-        labelPoints(moduleSizes[plotMods], plotData[plotMods, p], text, cex = 1, offs = 0.08, font.lab=2);
-        # For Zsummary, add threshold lines
-        if (p==2)
-        {
-          abline(h=0)
-          abline(h=2, col = "blue", lty = 2)
-          abline(h=10, col = "darkgreen", lty = 2)
-        }
+        y=t(dataExpr)[which(moduleColors==text[j]),]
+        write.csv(y,paste("./",foldername,"/",clusterName,"/modules/",text[j],".csv",sep = ""),quote=F)
       }
-      box(which = "plot", col = "black", lwd = 5)
-      dev.off()
-      
-    }
-    ##儲存module在每個cluster 的preservation Zscore
-    ## SAVE!
-    mpZscore <- t(mpZscore)
-    rownames(mpZscore) <- c(0:(nrow(clustering_size)-1))
-    write.csv(mpZscore,paste("./",foldername,"/",clusterName,"/module_preservation_Zscore.csv",sep = ""))
-    
-    #輸出每個module的基因，在程式一開頭已經創好資料夾,在該cluster的modlue資料夾中操作
-    ## SAVE!
-    for(j in 1:length(text))
+    }else
     {
-      y=t(dataExpr)[which(moduleColors==text[j]),]
-      write.csv(y,paste("./",foldername,"/",clusterName,"/modules/",text[j],".csv",sep = ""),quote=F)
+      grey <- c(rep(0,nrow(clustering_size)))
+      gold <- c(rep(0,nrow(clustering_size)))
+      blankdataframe <- data.frame(gold, grey)
+      rownames(blankdataframe) <- paste(c(0:(nrow(blankdataframe)-1)))
+      ##要插入一個空白的preservation z score
+      ##column只有grey 和gold, row =cluster數
+      #blankdataframe=
+      write.csv(blankdataframe,paste("./",foldername,"/",clusterName,"/module_preservation_Zscore.csv",sep = ""))         
+      cat('no module.\n')
     }
-  }else
-  {
-    grey <- c(rep(0,nrow(clustering_size)))
-    gold <- c(rep(0,nrow(clustering_size)))
-    blankdataframe <- data.frame(gold, grey)
-    rownames(blankdataframe) <- paste(c(0:(nrow(blankdataframe)-1)))
-    ##要插入一個空白的preservation z score
-    ##column只有grey 和gold, row =cluster數
-    #blankdataframe=
-    write.csv(blankdataframe,paste("./",foldername,"/",clusterName,"/module_preservation_Zscore.csv",sep = ""))         
-    cat('no module.\n')
   }
+
 }
